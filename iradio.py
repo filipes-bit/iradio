@@ -6,8 +6,8 @@
 # Author : Dovydas Rusinskas
 # Site	 : http://www.cortex.lt
 #
-# Date	 : 2014 12 29
-# Version: 1.5
+# Date	 : 2016 10 12
+# Version: 1.6
  
 # The wiring for the LCD is as follows:
 # 1 : GND
@@ -137,7 +137,10 @@ def main():
 	global mpd_client
 	
 	url_rds_opus = "http://www.lrt.lt/scripts/rdsOpus.php"
+	url_rds_power_hit_radio = "http://powerhitradio.tv3.lt/hotnot/onair/nowjson"
+	url_rds_tau = "http://www.tau.lt/info.dat"
 	ulr_rds_bbc_one = "http://polling.bbc.co.uk/radio/realtime/bbc_radio_one.jsonp"
+	ulr_rds_bbc_xtra = "http://polling.bbc.co.uk/radio/realtime/bbc_1xtra.jsonp"
 	
 	remove_str = 'Radio station '
 	old_songid = 0
@@ -255,6 +258,9 @@ def main():
 				
 				if currentsong_name == 'bbc_radio_one':
 					currentsong_name = 'BBC Radio 1'
+					
+				if currentsong_name == 'bbc_1xtra':
+					currentsong_name = 'BBC Radio 1Xtra'
 				
 				#pasalina remove_str nuo pradzios
 				if currentsong_name.startswith(remove_str):
@@ -337,13 +343,56 @@ def main():
 						print('[Error RDS]')
 						songtitle = '[Error RDS]'
 						pass
-					
+
+				#Power Hit Radio
+				if currentsong_name == 'Power Hit Radio':
+					print('Power Hit Radio')
+
+					try:
+						get_response = requests.get(url_rds_power_hit_radio)
+						spli = re.split('["]', get_response.content) #3 - Artist, 7 - Title
+						songtitle = spli[3] + " - " + spli[7]
+						
+					except:
+						print('[Error RDS]')
+						songtitle = '[Error RDS]'
+						pass
+						
+				#Radijas Tau
+				if currentsong_name == 'Radijas TAU 102.9 FM':
+					print('Radijas TAU 102.9 FM')
+
+					try:
+						get_response = requests.get(url_rds_tau)
+						spli = get_response.content.splitlines() #0 - RDS, 1 - artist, 2 - title
+						print spli
+						songtitle = spli[0]
+						
+					except:
+						print('[Error RDS]')
+						songtitle = '[Error RDS]'
+						pass
+						
 				#BBC Radio 1
 				if currentsong_name == 'BBC Radio 1':
 					print('BBC Radio 1')
 
 					try:
 						get_response = requests.get(ulr_rds_bbc_one)
+						spli = re.split('["]', get_response.content) #17 - Artist, 21 - Title
+						songtitle = spli[17] + " - " + spli[21]
+						
+					except:
+						print('[Error RDS]')
+						songtitle = '[Error RDS]'
+						pass
+						
+				#BBC Radio 1Xtra
+				if currentsong_name == 'BBC Radio 1Xtra':
+					print('BBC Radio 1Xtra')
+
+					try:
+						get_response = requests.get(ulr_rds_bbc_xtra)
 						spli = re.split('["]', get_response.content) #17 - Artist, 21 - Title
 						songtitle = spli[17] + " - " + spli[21]
 						
