@@ -157,6 +157,12 @@ def main():
 	time.sleep(3) 
 	#lcd_init()
 	
+	#lcd_byte(LCD_LINE_1, LCD_CMD)
+	#lcd_string("      Check         ")
+		
+	#lcd_byte(LCD_LINE_2, LCD_CMD)
+	#lcd_string(" internet connection")
+	
 	#mpd_client = mpd.MPDClient()										# Init MPD mpd_client
 	mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)						# Connect to local MPD Server
 	print('Connected')
@@ -246,13 +252,13 @@ def main():
 			get_response = requests.get(url_rds_opus)
 			spli = re.split('["]', get_response.content) #3 - Artist, 7 - Title, 15 - RDS info
 			
-			if spli[3] == '':
-				songtitle = spli[7]
-			elif spli[7] == '':
-				songtitle = spli[3]
-			elif spli[3] == '' and spli[7] == '':
+			if spli[3] == '' and spli[7] == '' and spli[15] != '':
 				songtitle = spli[15]
-			else: 
+			elif spli[3] == '' and spli[7] != '':
+				songtitle = spli[7]
+			elif spli[7] == '' and spli[3] != '':
+				songtitle = spli[3]
+			elif spli[3] != '' and spli[7] != '':
 				songtitle = spli[3] + " - " + spli[7]
 			
 		#BBC Radio 1
