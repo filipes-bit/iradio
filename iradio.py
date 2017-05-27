@@ -38,6 +38,7 @@ import threading
 
 MPD_SERVER_IP_HOST = "localhost"
 MPD_SERVER_PORT = 6600
+MPD_SERVER_PASSWORD = "" #not implemented/tested
 
 # Define GPIO to LCD mapping
 LCD_RS = 7
@@ -73,7 +74,7 @@ mpd_status_playlistlength = 0
 update_flag = 0	
 
 oled_saving = 0
-OLED_TIMEOUT = 2 *60 *60 #in seconds
+OLED_TIMEOUT = 3 *60 *60 #in seconds
 oled_timeout_counter = OLED_TIMEOUT
 
 def my_callback(channel):
@@ -166,8 +167,6 @@ def main():
 	GPIO.setup(LCD_D6, GPIO.OUT) # DB6
 	GPIO.setup(LCD_D7, GPIO.OUT) # DB7
 	
-	#time.sleep(1)
-
 	# Initialise display
 	#lcd_init()
 	oled_init()
@@ -196,7 +195,6 @@ def main():
 	except:
 		print('Not Connected')
 		pass
-	
 	
 	#----------OLED test begin
 	#lcd_byte(LCD_LINE_1, LCD_CMD)
@@ -255,6 +253,9 @@ def main():
 						spli = re.split('[/]', mpd_info['file'])
 						currentsong_name = spli[len(spli)-1]
 				
+				if currentsong_name == 'bbc_radio_one':
+					currentsong_name = 'BBC Radio 1'
+				
 				#pasalina remove_str nuo pradzios
 				if currentsong_name.startswith(remove_str):
 					currentsong_name = currentsong_name[len(remove_str):]
@@ -292,14 +293,45 @@ def main():
 						get_response = requests.get(url_rds_opus)
 						spli = re.split('["]', get_response.content) #3 - Artist, 7 - Title, 15 - RDS info
 						
-						if spli[3] == '' and spli[7] == '' and spli[15] != '':
-							songtitle = spli[15]
-						elif spli[3] == '' and spli[7] != '':
-							songtitle = spli[7]
-						elif spli[7] == '' and spli[3] != '':
-							songtitle = spli[3]
-						elif spli[3] != '' and spli[7] != '':
-							songtitle = spli[3] + " - " + spli[7]
+						opus_artist = spli[3]
+						opus_title = spli[7]
+						opus_rds_info = spli[15]
+						
+	
+						if (
+								opus_rds_info != '' and #jei yra rds info, tada ziuriu ar bent vienas laukas sutampa su ja kazkiek
+								
+								( opus_artist != '' and opus_artist.upper() == opus_rds_info[:len(opus_artist)].upper() ) or  
+								( opus_artist != '' and opus_artist[:len(opus_rds_info)].upper() == opus_rds_info.upper() )or 
+								
+								( opus_title != '' and opus_title.upper() == opus_rds_info[:len(opus_title)].upper() )or
+								( opus_title != '' and opus_title[:len(opus_rds_info)].upper() == opus_rds_info.upper() )
+							):
+							print 'lygus'
+
+							#TODO: apjungti
+							if opus_artist == '' and opus_title != '':
+								songtitle = opus_title
+							elif opus_title == '' and opus_artist != '':
+								songtitle = opus_artist
+							elif opus_artist != '' and opus_title != '':
+								songtitle = opus_artist + " - " + opus_title
+							
+						else:
+							print 'nelygus'
+							
+							if opus_rds_info != '':
+								songtitle =  opus_rds_info + " ~ "
+							else:
+								songtitle = ''
+							
+							#TODO: apjungti
+							if opus_artist == '' and opus_title != '':
+								songtitle = songtitle + opus_title
+							elif opus_title == '' and opus_artist != '':
+								songtitle = songtitle + opus_artist
+							elif opus_artist != '' and opus_title != '':
+								songtitle = songtitle + opus_artist + " - " + opus_title
 
 					except:
 						print('[Error RDS]')
@@ -307,7 +339,7 @@ def main():
 						pass
 					
 				#BBC Radio 1
-				if currentsong_name == 'BBC Radio 1': #jei pirmas irasas eileje - reikia sugalvoti kazka geriau...
+				if currentsong_name == 'BBC Radio 1':
 					print('BBC Radio 1')
 
 					try:
@@ -327,7 +359,10 @@ def main():
 				songtitle = '[Not playing]'
 				
 				try:
-					mpd_client.play(mpd_status['songid'])#kad pradetu groti automatiskai
+					#mpd_client.play(mpd_status['songid'])#kad pradetu groti automatiskai
+					mpd_client.play(0)
+				
+					
 				except:
 					pass
 				
@@ -389,7 +424,6 @@ def display_task():
 		oled_timeout_counter = oled_timeout_counter - 1
 	else:	
 		oled_saving = 1
-
 					
 def lcd_init():
 	# Initialise display
