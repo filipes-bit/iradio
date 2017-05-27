@@ -4,10 +4,10 @@
 # Raspberry Pi
 #
 # Author : Dovydas Rusinskas
-# Site	 : http://www.cortex.lt
+# Site	 : http://www.electronic.lt
 #
-# Date	 : 2016 10 12
-# Version: 1.6
+# Date	 : 2017 05 15
+# Version: 1.7
  
 # The wiring for the LCD is as follows:
 # 1 : GND
@@ -39,6 +39,9 @@ import threading
 MPD_SERVER_IP_HOST = "localhost"
 MPD_SERVER_PORT = 6600
 MPD_SERVER_PASSWORD = "" #not implemented/tested
+
+DISPLAY_TYPE = "OLED_WS0010" #LCD_HD44780 or OLED_WS0010
+
 
 # Define GPIO to LCD mapping
 LCD_RS = 7
@@ -93,8 +96,6 @@ def my_callback(channel):
 	
 		if channel == BTN_MENU:
 			print('Play')
-			#subprocess.call("sudo service mpd restart", shell=True)  
-			#os.system('sudo service mpd restart')
 			mpd_client.play(0)
 			
 		if channel == BTN_LEFT:
@@ -120,13 +121,6 @@ def my_callback(channel):
 	if pressed_both == 0:
 		oled_timeout_counter = OLED_TIMEOUT
 		oled_saving = 0
-#		print('song_num %s'%song_num)
-#		print('mpd_status_songid %s'%mpd_status_songid)
-#		print('mpd_status_playlistlength %s'%mpd_status_playlistlength)
-#		
-#		if song_num < (mpd_status_playlistlength - 2):
-#			mpd_client.play(song_num)
-#			print('song_num OK')
 
 def main():
 
@@ -147,7 +141,7 @@ def main():
 	
 	loopas = 0
 	
-	#buttns
+	#buttons
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(BTN_LEFT, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 	GPIO.setup(BTN_MENU, GPIO.IN, pull_up_down = GPIO.PUD_UP)
@@ -171,7 +165,6 @@ def main():
 	GPIO.setup(LCD_D7, GPIO.OUT) # DB7
 	
 	# Initialise display
-	#lcd_init()
 	oled_init()
 	#oled_gprahic_init()
  
@@ -199,21 +192,10 @@ def main():
 		print('Not Connected')
 		pass
 	
-	#----------OLED test begin
-	#lcd_byte(LCD_LINE_1, LCD_CMD)
-	#lcd_string("OLED Test 2x20 Yello")
-		
-	#lcd_byte(LCD_LINE_2, LCD_CMD)
-	#lcd_string("<- www.cortex.lt  ->")
-	
-	#for aaa in range (0, 2):
-	#	update_flag = 1
-	#----------OLED test end
-	
 	#for aaa in range (0, 10):
 	while True:
 	#while False:
-		print('loop: %d' %loopas)
+		print('    --- loop: %d' %loopas)
 		loopas += 1
 		
 		#gauti info dainu junginejimui mygtukais
@@ -407,14 +389,6 @@ def main():
 				print('[Not playing]')
 				songtitle = '[Not playing]'
 				
-				try:
-					#mpd_client.play(mpd_status['songid'])#kad pradetu groti automatiskai
-					mpd_client.play(0)
-				
-					
-				except:
-					pass
-				
 		except:
 			currentsong_name = ''
 			currentsong_name_show = currentsong_name
@@ -436,7 +410,6 @@ def main():
 		#center			
 		if len(songtitle_show) < LCD_WIDTH:
 			songtitle_show = ' ' * ((LCD_WIDTH - len(songtitle_show))/2) + songtitle_show
-		
 		
 		update_flag = 0
 		
@@ -475,6 +448,8 @@ def display_task():
 		oled_saving = 1
 					
 def lcd_init():
+	print('lcd_init')
+
 	# Initialise display
 	lcd_byte(0x33,LCD_CMD)
 	lcd_byte(0x32,LCD_CMD)
@@ -484,6 +459,8 @@ def lcd_init():
 	lcd_byte(0x01,LCD_CMD) #clear display?
 	
 def oled_init():
+	print('oled_init')
+	
 	# Initialise display into 4 bit mode
 	lcd_byte(0x33,LCD_CMD)
 	lcd_byte(0x32,LCD_CMD)
