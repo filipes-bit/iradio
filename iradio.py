@@ -1,13 +1,13 @@
 #!/usr/bin/python
 #
-# HD44780 LCD Test Script for
+# Internet radio
 # Raspberry Pi
 #
-# Author : Matt Hawkins
-# Site	 : http://www.raspberrypi-spy.co.uk
+# Author : Dovydas Rusinskas
+# Site	 : http://www.cortex.lt
 #
-# Date	 : 26/07/2012
-# taskai http://stackoverflow.com/questions/8241099/executing-tasks-in-parallel-in-python
+# Date	 : 2014 12 29
+# Version: 1.5
  
 # The wiring for the LCD is as follows:
 # 1 : GND
@@ -34,6 +34,7 @@ import mpd
 import re
 import os
 import requests
+import threading
 
 MPD_SERVER_IP_HOST = "localhost"
 MPD_SERVER_PORT = 6600
@@ -71,6 +72,10 @@ mpd_status_songid = 0
 mpd_status_playlistlength = 0
 update_flag = 0	
 
+oled_saving = 0
+OLED_TIMEOUT = 2 *60 *60 #in seconds
+oled_timeout_counter = OLED_TIMEOUT
+
 def my_callback(channel):
 
 	global song_num
@@ -78,23 +83,42 @@ def my_callback(channel):
 	global mpd_status_playlistlength
 	global update_flag	
 	global mpd_client
+	global oled_timeout_counter
+	global oled_saving
+	
+	pressed_both = 0
+	
+	if oled_saving == 0:
+	
+		if channel == BTN_MENU:
+			print('Play')
+			#subprocess.call("sudo service mpd restart", shell=True)  
+			#os.system('sudo service mpd restart')
+			mpd_client.play(0)
+			
+		if channel == BTN_LEFT:
+			print('Previous')
+			mpd_client.previous()
+			
+			if(GPIO.input(BTN_RIGHT) == 0):
+				print('abu')
+				oled_saving = 1
+				pressed_both = 1
 
- 	if channel == BTN_LEFT:
- 		print('Previous')
- 		mpd_client.previous()
+		if channel == BTN_RIGHT:
+			print('Next')
+			mpd_client.next()
+			song_num = mpd_status_songid + 1
+			
+			if(GPIO.input(BTN_LEFT) == 0):
+				print('abu')
+				oled_saving = 1;
+				pressed_both = 1
 		
-	if channel == BTN_MENU:
-		print('Play')
-		#subprocess.call("sudo service mpd restart", shell=True)  
-		#os.system('sudo service mpd restart')
-		mpd_client.play(0)
-
-	if channel == BTN_RIGHT:
-		print('Next')
-		mpd_client.next()
-		song_num = mpd_status_songid + 1
-		
-	update_flag = 1		
+	update_flag = 1	
+	if pressed_both == 0:
+		oled_timeout_counter = OLED_TIMEOUT
+		oled_saving = 0
 #		print('song_num %s'%song_num)
 #		print('mpd_status_songid %s'%mpd_status_songid)
 #		print('mpd_status_playlistlength %s'%mpd_status_playlistlength)
@@ -111,7 +135,7 @@ def main():
 	global update_flag
 	global mpd_client
 	
-	url_rds_opus = "http://www.lrt.lt/mediateka/tiesiogiai/lrt-opus?action=opusrds"
+	url_rds_opus = "http://www.lrt.lt/scripts/rdsOpus.php"
 	ulr_rds_bbc_one = "http://polling.bbc.co.uk/radio/realtime/bbc_radio_one.jsonp"
 	
 	remove_str = 'Radio station '
@@ -130,6 +154,7 @@ def main():
 	
 	
 	# Main program block
+	print('Starting Internet radio')
  
 	#GPIO.setmode(GPIO.BCM)			 # Use BCM GPIO numbers
 	GPIO.setwarnings(False)
@@ -154,7 +179,8 @@ def main():
 	lcd_byte(LCD_LINE_2, LCD_CMD)
 	lcd_string("     Made by DR     ")
 	
-	time.sleep(3) 
+	time.sleep(3)
+	display_task()	
 	#lcd_init()
 	
 	#lcd_byte(LCD_LINE_1, LCD_CMD)
@@ -164,8 +190,13 @@ def main():
 	#lcd_string(" internet connection")
 	
 	#mpd_client = mpd.MPDClient()										# Init MPD mpd_client
-	mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)						# Connect to local MPD Server
-	print('Connected')
+	try:
+		mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)						# Connect to local MPD Server
+		print('Connected')
+	except:
+		print('Not Connected')
+		pass
+	
 	
 	#----------OLED test begin
 	#lcd_byte(LCD_LINE_1, LCD_CMD)
@@ -183,91 +214,138 @@ def main():
 	#while False:
 		print('loop: %d' %loopas)
 		loopas += 1
-
-		mpd_info = mpd_client.status()
 		
-		if 'songid' in mpd_info:
-			mpd_status_songid = int(mpd_info['songid'])
-		else:
-			mpd_status_songid = -1
-
-		if 'playlistlength' in mpd_info:
-			mpd_status_playlistlength = int(mpd_info['playlistlength'])
-		else:
-			mpd_status_playlistlength = -1	
-	
-		mpd_info = mpd_client.currentsong()									 # Get the currentsong dict
-		mpd_status = mpd_client.status()
-
-		mpd_songid = ' #' + str(int(mpd_status['songid'])+1) + '/' + mpd_status['playlistlength']	
-		
-		if old_songid != int(mpd_status['songid']):
-			update_flag = 1
+		#gauti info dainu junginejimui mygtukais
+		try:
+			mpd_info = mpd_client.status()
 			
-		old_songid = int(mpd_status['songid'])
+			if 'songid' in mpd_info:
+				mpd_status_songid = int(mpd_info['songid'])
+			else:
+				mpd_status_songid = -1
 
-		#######stoties pavadinimo formavimas
-		if 'name' in mpd_info:												
-			currentsong_name = mpd_info['name']
-		else:
-			currentsong_name = "-"
-			#jei nera pavadinimo, bandau imti linko pabaiga
-			if 'file' in mpd_info: 
-				spli = re.split('[/]', mpd_info['file'])
-				currentsong_name = spli[len(spli)-1]
-		
-		#pasalina remove_str nuo pradzios
-		if currentsong_name.startswith(remove_str):
-			currentsong_name = currentsong_name[len(remove_str):]
+			if 'playlistlength' in mpd_info:
+				mpd_status_playlistlength = int(mpd_info['playlistlength'])
+			else:
+				mpd_status_playlistlength = -1	
 			
-		currentsong_name_show = currentsong_name
+		except:
+			pass
+			
+		try:
+			mpd_info = mpd_client.currentsong()
+			mpd_status = mpd_client.status()
 
-		#center			
-		if len(currentsong_name_show) < LCD_WIDTH:
-			if update_flag == 0:
-				currentsong_name_show = ' ' * ((LCD_WIDTH - len(currentsong_name_show))/2) + currentsong_name_show
-		
-		#pridedu tarpu kad butu ilgis pagal lcd ploti
-		currentsong_name_show = currentsong_name_show + ' ' * (LCD_WIDTH - len(currentsong_name_show))
+			mpd_songid = ' #' + str(int(mpd_status['songid'])+1) + '/' + mpd_status['playlistlength']	
 			
-		#parodau saraso eile
-		if update_flag == 1:		
-			currentsong_name_show = currentsong_name_show[:(LCD_WIDTH  - len(mpd_songid) )] + mpd_songid
-		
-		#######dainos pavadinimo formavimas		
-		
-		if 'title' in mpd_info:													 # Check to see if "title" title exists in the dict
-			songtitle = mpd_info['title']									 # If it does set songtitle to the id3 title
-		elif 'file' in mpd_info:													# If it doesn't have a title use the filename
-			songtitle = mpd_info['file']										# Set songtitle to the filename
-		else:
-			songtitle = "-"
+			if old_songid != int(mpd_status['songid']):
+				update_flag = 1
+				
+			old_songid = int(mpd_status['songid'])
 			
-		#stotim, kurios neteikia info gaunu is http (web)
-		
-		#Opus3
-		if currentsong_name == 'Opus3':
-			print('Opus3')
+			if mpd_status['state'] == 'play': #jei groja
 
-			get_response = requests.get(url_rds_opus)
-			spli = re.split('["]', get_response.content) #3 - Artist, 7 - Title, 15 - RDS info
-			
-			if spli[3] == '' and spli[7] == '' and spli[15] != '':
-				songtitle = spli[15]
-			elif spli[3] == '' and spli[7] != '':
-				songtitle = spli[7]
-			elif spli[7] == '' and spli[3] != '':
-				songtitle = spli[3]
-			elif spli[3] != '' and spli[7] != '':
-				songtitle = spli[3] + " - " + spli[7]
-			
-		#BBC Radio 1
-		if currentsong_name == 'BBC Radio 1': #jei pirmas irasas eileje - reikia sugalvoti kazka geriau...
-			print('BBC Radio 1')
+				#######stoties pavadinimo formavimas
+				if 'name' in mpd_info:												
+					currentsong_name = mpd_info['name']
+				else:
+					currentsong_name = "-"
+					#jei nera pavadinimo, bandau imti linko pabaiga
+					if 'file' in mpd_info: 
+						spli = re.split('[/]', mpd_info['file'])
+						currentsong_name = spli[len(spli)-1]
+				
+				#pasalina remove_str nuo pradzios
+				if currentsong_name.startswith(remove_str):
+					currentsong_name = currentsong_name[len(remove_str):]
+					
+				currentsong_name_show = currentsong_name
 
-			get_response = requests.get(ulr_rds_bbc_one)
-			spli = re.split('["]', get_response.content) #17 - Artist, 21 - Title
-			songtitle = spli[17] + " - " + spli[21]
+				#center			
+				if len(currentsong_name_show) < LCD_WIDTH:
+					if update_flag == 0:
+						currentsong_name_show = ' ' * ((LCD_WIDTH - len(currentsong_name_show))/2) + currentsong_name_show
+				
+				#pridedu tarpu kad butu ilgis pagal lcd ploti
+				currentsong_name_show = currentsong_name_show + ' ' * (LCD_WIDTH - len(currentsong_name_show))
+					
+				#parodau saraso eile
+				if update_flag == 1:		
+					currentsong_name_show = currentsong_name_show[:(LCD_WIDTH  - len(mpd_songid) )] + mpd_songid
+				
+				#######dainos pavadinimo formavimas		
+				
+				if 'title' in mpd_info:													 # Check to see if "title" title exists in the dict
+					songtitle = mpd_info['title']									 # If it does set songtitle to the id3 title
+				elif 'file' in mpd_info:													# If it doesn't have a title use the filename
+					songtitle = mpd_info['file']										# Set songtitle to the filename
+				else:
+					songtitle = "-"
+					
+				#stotim, kurios neteikia info gaunu is http (web)
+				
+				#Opus3
+				if currentsong_name == 'Opus3':
+					print('Opus3')
+					
+					try:
+						get_response = requests.get(url_rds_opus)
+						spli = re.split('["]', get_response.content) #3 - Artist, 7 - Title, 15 - RDS info
+						
+						if spli[3] == '' and spli[7] == '' and spli[15] != '':
+							songtitle = spli[15]
+						elif spli[3] == '' and spli[7] != '':
+							songtitle = spli[7]
+						elif spli[7] == '' and spli[3] != '':
+							songtitle = spli[3]
+						elif spli[3] != '' and spli[7] != '':
+							songtitle = spli[3] + " - " + spli[7]
+
+					except:
+						print('[Error RDS]')
+						songtitle = '[Error RDS]'
+						pass
+					
+				#BBC Radio 1
+				if currentsong_name == 'BBC Radio 1': #jei pirmas irasas eileje - reikia sugalvoti kazka geriau...
+					print('BBC Radio 1')
+
+					try:
+						get_response = requests.get(ulr_rds_bbc_one)
+						spli = re.split('["]', get_response.content) #17 - Artist, 21 - Title
+						songtitle = spli[17] + " - " + spli[21]
+						
+					except:
+						print('[Error RDS]')
+						songtitle = '[Error RDS]'
+						pass
+			else:
+				currentsong_name = ''
+				currentsong_name_show = currentsong_name
+				
+				print('[Not playing]')
+				songtitle = '[Not playing]'
+				
+				try:
+					mpd_client.play(mpd_status['songid'])#kad pradetu groti automatiskai
+				except:
+					pass
+				
+		except:
+			currentsong_name = ''
+			currentsong_name_show = currentsong_name
+			print('[Error MPD]')
+			songtitle = '[Error MPD]'
+			
+			try:
+				mpd_client = mpd.MPDClient()
+				#mpd_client.disconnect				
+				mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)						# Connect to local MPD Server
+			except:
+				print('[Error MPD con]')
+				songtitle = '[Error MPD con]'
+				pass
+			pass
 
 		songtitle_show = songtitle
 			
@@ -281,6 +359,12 @@ def main():
 		print(currentsong_name)
 		print(songtitle)
 		
+		#mpd_client.disconnect()
+		
+		if (oled_saving == 1): #blank screen
+			currentsong_name_show = " "
+			songtitle_show = " "
+			time.sleep(1)
 		
 		#isvedimas i LCD
 		lcd_byte(LCD_LINE_1, LCD_CMD)
@@ -290,11 +374,23 @@ def main():
 		for i in range (0, (((len(songtitle_show)-1)/LCD_WIDTH)+1) ): 
 			lcd_byte(LCD_LINE_2, LCD_CMD)
 			lcd_string(songtitle_show[(i*LCD_WIDTH):])
-			if update_flag == 0:
+			if (update_flag == 0) and (oled_saving == 0):
 				time.sleep(2.5)  # 2 second delay
 				if i == 0:
 					time.sleep(1) #papildomas uzlaikymas pimai daliai
- 
+
+def display_task():
+	global oled_timeout_counter
+	global oled_saving
+
+	threading.Timer(1, display_task).start()
+	
+	if (oled_timeout_counter > 0):
+		oled_timeout_counter = oled_timeout_counter - 1
+	else:	
+		oled_saving = 1
+
+					
 def lcd_init():
 	# Initialise display
 	lcd_byte(0x33,LCD_CMD)
