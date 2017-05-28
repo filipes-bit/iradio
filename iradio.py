@@ -6,7 +6,7 @@
 # Author : Dovydas Rusinskas
 # Site	 : http://www.electronic.lt
 #
-# Date	 : 2017 05 15
+# Date	 : 2017 05 28
 # Version: 1.7
  
 # The wiring for the LCD is as follows:
@@ -69,7 +69,7 @@ BTN_RIGHT = 10
 BTN_MENU = 11
 BTN_LEFT = 9
 
-mpd_client = mpd.MPDClient()										# global Init MPD mpd_client
+mpd_client = mpd.MPDClient()		# global Init MPD mpd_client
 
 song_num = 0
 mpd_status_songid = 0
@@ -165,8 +165,8 @@ def main():
 	GPIO.setup(LCD_D7, GPIO.OUT) # DB7
 	
 	# Initialise display
+	#lcd_init()
 	oled_init()
-	#oled_gprahic_init()
  
 	lcd_byte(LCD_LINE_1, LCD_CMD)
 	lcd_string("   Internet radio   ")
@@ -175,8 +175,7 @@ def main():
 	lcd_string("     Made by DR     ")
 	
 	time.sleep(3)
-	display_task()	
-	#lcd_init()
+	display_task()		
 	
 	#lcd_byte(LCD_LINE_1, LCD_CMD)
 	#lcd_string("      Check         ")
@@ -186,7 +185,7 @@ def main():
 	
 	#mpd_client = mpd.MPDClient()										# Init MPD mpd_client
 	try:
-		mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)						# Connect to local MPD Server
+		mpd_client.connect(MPD_SERVER_IP_HOST, MPD_SERVER_PORT)			# Connect to local MPD Server
 		print('Connected')
 	except:
 		print('Not Connected')
@@ -264,10 +263,10 @@ def main():
 				
 				#######dainos pavadinimo formavimas		
 				
-				if 'title' in mpd_info:													 # Check to see if "title" title exists in the dict
-					songtitle = mpd_info['title']									 # If it does set songtitle to the id3 title
-				elif 'file' in mpd_info:													# If it doesn't have a title use the filename
-					songtitle = mpd_info['file']										# Set songtitle to the filename
+				if 'title' in mpd_info:												# Check to see if "title" title exists in the dict
+					songtitle = mpd_info['title']									# If it does set songtitle to the id3 title
+				elif 'file' in mpd_info:											# If it doesn't have a title use the filename
+					songtitle = mpd_info['file']									# Set songtitle to the filename
 				else:
 					songtitle = "-"
 					
@@ -478,54 +477,6 @@ def oled_init():
 	# now turn on the display, ready for use - IMPORTANT!
 	lcd_byte(0x0C,LCD_CMD)    # display on, cursor/blink off
 	
-def oled_gprahic_init():
-	# Initialise display
-	lcd_byte(0x00,LCD_CMD) # 0x0 x 5
-	lcd_byte(0x00,LCD_CMD)
-	lcd_byte(0x02,LCD_CMD) # function set
-	lcd_byte(0x28,LCD_CMD) # N=1
-	lcd_byte(0x0c,LCD_CMD) # D=1 display on
-	lcd_byte(0x14,LCD_CMD) # S/C=0 R/L=1
-	lcd_byte(0x1f,LCD_CMD) # G/C=1 graphic mode
-	
-	time.sleep(1)
-	lcd_byte(0x40 + 0,LCD_CMD) #y position
-	lcd_byte(0x80 + 0,LCD_CMD) #x position
-	lcd_byte(0xFF,LCD_CHR) 
-	
-	for x_pos in range (0, 100):
-	
-		lcd_byte(0x40 + 0,LCD_CMD) #y position
-		lcd_byte(0x80 + x_pos,LCD_CMD) #x position
-		lcd_byte(0xAA,LCD_CHR) 
-		
-	time.sleep(1)
-		
-	for x_pos in range (0, 100):
-	
-		lcd_byte(0x40 + 1,LCD_CMD) #y position
-		lcd_byte(0x80 + x_pos,LCD_CMD) #x position
-		lcd_byte(0xAA,LCD_CHR) 
-		
-	time.sleep(1)
-		
-	for x_pos in range (0, 100):
-	
-		lcd_byte(0x40 + 0,LCD_CMD) #y position
-		lcd_byte(0x80 + x_pos,LCD_CMD) #x position
-		lcd_byte(0xFF,LCD_CHR) 
-	
-	
-	time.sleep(1)
-	
-	lcd_byte(0x40 + 0,LCD_CMD) #y position
-	lcd_byte(0x80 + 0,LCD_CMD) #x position
-	lcd_byte(0xFF,LCD_CHR) 
-	
-	time.sleep(10)
-
-	
- 
 def lcd_string(message):
 	# Send string to display
  
