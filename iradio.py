@@ -40,7 +40,7 @@ MPD_SERVER_IP_HOST = "localhost"
 MPD_SERVER_PORT = 6600
 MPD_SERVER_PASSWORD = "" #not implemented/tested
 
-DISPLAY_TYPE = "OLED_WS0010" #LCD_HD44780 or OLED_WS0010
+DISPLAY_TYPE = "LCD_HD44780" #LCD_HD44780 or OLED_WS0010
 
 
 # Define GPIO to LCD mapping
@@ -52,7 +52,7 @@ LCD_D6 = 23
 LCD_D7 = 18
  
 # Define some device constants
-LCD_WIDTH = 20		# Maximum characters per line
+LCD_WIDTH = 16	# Maximum characters per line
 LCD_CHR = True
 LCD_CMD = False
  
